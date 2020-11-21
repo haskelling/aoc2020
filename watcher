@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if ! command -v fswatch &> /dev/null; then
+  echo "$0": Please install fswatch. >&2
+  exit 1
+fi
+
+t="$(make 2>&1)"
+echo "[2J[H$t"
+
+fswatch -o --event Updated --event Created -e ".*" -i ".*\\.hs$" . \
+  | xargs -I{} sh -c 't="$(make 2>&1)"; echo "[2J[H$t"'
