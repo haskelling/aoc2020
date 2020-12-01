@@ -22,3 +22,7 @@ cabal.project.local~
 .HTF/
 .ghc.environment.*
 .cookie
+[1-9][ab]
+[12]0-9][ab]
+*.input
+*.output
