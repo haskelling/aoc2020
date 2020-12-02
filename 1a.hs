@@ -1,6 +1,5 @@
-import Prelude
+import AOC
 
-main = interact $ (++"\n") . show . f . map (read :: String -> Int) . lines
+main = interact $ f . map read . lines
 
-f :: [Int] -> Int
 f (x:xs) = if (2020 - x) `elem` xs then x * (2020 - x) else f xs
