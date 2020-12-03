@@ -1,6 +1,6 @@
 import AOC
 
-main = interact $ f' . map read . lines
+main = interact $ f' . map read
 
 f' (x:xs) = case f (2020 - x) xs of
               Nothing -> f' xs
