@@ -4,35 +4,22 @@ import qualified Data.Map as M
 
 main = interact' $ f . parse p
 
-data FT = Byr | Iyr | Eyr | Hgt | Hcl | Ecl | Pid | Cid deriving (Show, Eq, Ord)
-
-fieldtype :: Parser FT
-fieldtype = choice [sr "byr" Byr, sr "iyr" Iyr, sr "eyr" Eyr, sr "hgt" Hgt
-                  , sr "hcl" Hcl, sr "ecl" Ecl, sr "pid" Pid, sr "cid" Cid]
-  where
-    sr :: String -> FT -> Parser FT
-    sr s ft = try $ string s >> return ft
+data FT = Byr | Iyr | Eyr | Hgt | Hcl | Ecl | Pid | Cid deriving (Show, Eq, Ord, Enum, Bounded)
 
 field :: Parser (FT, String)
 field = do
-  ft <- fieldtype
+  ft <- enump
   char ':'
   s <- manyTill anyChar space
   return (ft, s)
 
 p :: Parser [[(FT, String)]]
-p = many1 $ do
-  t <- many1 field
-  (char '\n' >> return ()) <|> eof
-  return t
+p = many1 field `sepBy1` char '\n' <* eof
 
 f (Right ps) = count True . map isValid . filter ((==7) . M.size) . map (M.delete Cid . M.fromList) $ ps
 
 hgtp :: Parser (Int, String)
-hgtp = do
-  h <- many1 digit
-  u <- many1 anyChar
-  return (read h, u)
+hgtp = (,) <$> read <$> many1 digit <*> many1 anyChar
 
 isValid p =
   let
