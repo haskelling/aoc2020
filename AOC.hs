@@ -1,20 +1,26 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module AOC(module Prelude, module AOC, module Text.Parsec, module Data.Vector) where
+module AOC(module Prelude, module AOC, module Text.Parsec, module Data.Vector, module Data.Char, module Data.List, module Data.List.Split) where
 
 import Data.Char
 import Prelude hiding(interact)
 import qualified Prelude
-import Text.Parsec hiding(count, parse)
+import Text.Parsec hiding(count, parse, uncons)
 import qualified Text.Parsec as Parsec
 import Data.Vector(Vector)
 import qualified Data.Vector as V
+import Data.List
+import qualified Data.Map as M
+import Data.List.Split hiding(oneOf, sepBy, endBy)
 
 interact :: Show a => ([String] -> a) -> IO ()
 interact f = interact' $ f . lines
 
 interact' :: Show a => (String -> a) -> IO ()
 interact' f = Prelude.interact $ (++"\n") . show . f
+
+interactg :: Show a => ([[String]] -> a) -> IO ()
+interactg f = interact $ f. splitOn [""]
 
 type Parser = Parsec String ()
 
@@ -46,3 +52,9 @@ v !| i = v V.! (i `rem` V.length v)
 
 ltov :: [a] -> Vector a
 ltov = V.fromList
+
+tr :: Ord a => [a] -> [a] -> [a] -> [a]
+tr xs ys = map ((M.fromList $ zip xs ys) M.!)
+
+readBin :: String -> Int
+readBin = foldl' (\x y -> x * 2 + digitToInt y) 0
