@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module AOC(module Prelude, module AOC, module Text.Parsec, module Data.Vector, module Data.Char, module Data.List, module Data.List.Split) where
+module AOC(module Prelude, module AOC, module Text.Parsec, module Data.Vector, module Data.Char, module Data.List, module Data.List.Split, module Data.Hashable) where
 
 import Data.Char
 import Prelude hiding(interact)
@@ -12,6 +12,7 @@ import qualified Data.Vector as V
 import Data.List
 import qualified Data.Map as M
 import Data.List.Split hiding(oneOf, sepBy, endBy)
+import Data.Hashable(hash)
 
 interact :: Show a => ([String] -> a) -> IO ()
 interact f = interact' $ f . lines
@@ -46,6 +47,11 @@ rights :: [Either a b] -> [b]
 rights (Right x:xs) = x:rights xs
 rights (_:xs) = rights xs
 rights [] = []
+
+lefts :: [Either a b] -> [a]
+lefts (Left x:xs) = x:lefts xs
+lefts (_:xs) = lefts xs
+lefts [] = []
 
 (!|) :: Vector a -> Int -> a
 v !| i = v V.! (i `rem` V.length v)
