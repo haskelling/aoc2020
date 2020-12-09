@@ -1,5 +1,6 @@
 import AOC
-import qualified Data.IntMap as M
+import Data.Maybe
+import qualified Data.Map as M
 
 main = interact $ f . rights . map (parse p)
 
@@ -29,16 +30,16 @@ bags = do
   b <- bag
   return (n, b)
 
-converge :: Eq a => (a -> a) -> a -> a
-converge f x = let x' = f x in if x' == x then x else converge f x'
-
-f :: [(Bag, [(Int, Bag)])] -> Int
-f bs = converge getAll M.empty M.! hash "shiny gold"
+summarize :: Ord n => [(n, [(v, n)])] -> v -> ([(v, v)] -> v) -> n -> v
+summarize dag v0 f n = head $ catMaybes $ map (M.!? n) $ iterate getAll M.empty
   where
-    containedByAll bs' = filter (matchesAll bs') bs
+    containedByAll xs = filter (matchesAll xs) dag
     matchesAll xs (_, ys) = null . (\\ xs) $ map snd ys
 
     getAll m = foldl' add m $ containedByAll $ M.keys m
 
     add m (b, ys) = M.insertWith (flip const) b (calc m ys) m
-    calc m xs = sum $ map (\(i, b') -> i * (1 + m M.! b')) xs
+    calc _ [] = v0
+    calc m xs = f $ map (fmap (m M.!)) xs
+
+f bs = summarize bs 0 (sum . (map (\(i, v) -> i * (v + 1)))) $ hash "shiny gold"
