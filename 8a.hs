@@ -2,7 +2,7 @@ import AOC
 import qualified Data.Vector as V
 import qualified Data.Set as S
 
-main = interact $ f . ltov . rights . map (parse p)
+main = interact $ f . ltov . parselist p
 
 data Instruction = Acc | Jmp | Nop deriving (Show, Eq, Read, Ord, Bounded, Enum)
 

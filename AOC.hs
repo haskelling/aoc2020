@@ -1,8 +1,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module AOC(module Prelude, module AOC, module Text.Parsec, module Data.Vector, module Data.Char, module Data.List, module Data.List.Split, module Data.Hashable) where
+module AOC(module Prelude, module AOC, module Text.Parsec, module Data.Vector, module Data.Char, module Data.List, module Data.List.Split, module Data.Hashable, module Data.Maybe, module Data.Either) where
 
 import Data.Char
+import Data.Maybe
+import Data.Either
 import Prelude hiding(interact)
 import qualified Prelude
 import Text.Parsec hiding(count, parse, uncons)
@@ -28,6 +30,9 @@ type Parser = Parsec String ()
 parse :: Parser a -> String -> Either ParseError a
 parse p = Parsec.parse p ""
 
+parselist :: Parser a -> [String] -> [a]
+parselist p = either (error . show) id . mapM (parse p)
+
 chari :: Char -> Parser Char
 chari c = oneOf [toLower c, toUpper c]
 
@@ -43,16 +48,6 @@ enump = choice $ map sr [minBound :: b .. maxBound :: b]
 count :: Eq a => a -> [a] -> Int
 count c = length . filter (==c)
 
-rights :: [Either a b] -> [b]
-rights (Right x:xs) = x:rights xs
-rights (_:xs) = rights xs
-rights [] = []
-
-lefts :: [Either a b] -> [a]
-lefts (Left x:xs) = x:lefts xs
-lefts (_:xs) = lefts xs
-lefts [] = []
-
 (!|) :: Vector a -> Int -> a
 v !| i = v V.! (i `rem` V.length v)
 
@@ -64,3 +59,15 @@ tr xs ys = map ((M.fromList $ zip xs ys) M.!)
 
 readBin :: String -> Int
 readBin = foldl' (\x y -> x * 2 + digitToInt y) 0
+
+summarize :: Ord n => ([n], n -> [(v, n)]) -> w -> ([(v, w)] -> w) -> n -> w
+summarize (nodes, getChildren) v0 f n = head $ catMaybes $ map (M.!? n) $ iterate getAll M.empty
+  where
+    containedByAll xs = filter (matchesAll xs) nodes
+    matchesAll ns n = null . (\\ ns) $ map snd $ getChildren n
+
+    getAll m = foldl' add m $ containedByAll $ M.keys m
+
+    add m n = M.insertWith (flip const) n (calc m $ getChildren n) m
+    calc _ [] = v0
+    calc m xs = f $ map (fmap (m M.!)) xs

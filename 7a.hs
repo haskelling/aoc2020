@@ -1,6 +1,6 @@
 import AOC
 
-main = interact $ f . rights . map (parse p)
+main = interact $ f . parselist p
 
 type Bag = Int
 
