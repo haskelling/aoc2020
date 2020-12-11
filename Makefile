@@ -1,7 +1,7 @@
 FLAGS = -fPIC -O2 -g
 HFLAGS = $(FLAGS) -threaded -rtsopts -v0 -XNoImplicitPrelude
 DONE1 = $(wildcard [1-9][ab].hs)
-DONE2 = $(wildcard [12][1-9][ab].hs)
+DONE2 = $(wildcard [12][0-9][ab].hs)
 
 all: $(sort $(DONE1:%.hs=%.output)) $(sort $(DONE2:%.hs=%.output))
 	@for output in $^; do /bin/echo -n "$${output/.output}: "; cat "$$output"; done
