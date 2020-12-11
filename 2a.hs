@@ -11,7 +11,7 @@ p = do
   c <- letter
   string ": "
   s <- many1 letter
-  return $ (read low, read high, c, s)
+  return (read low, read high, c, s)
 
 f xs = count True $ map test xs
 

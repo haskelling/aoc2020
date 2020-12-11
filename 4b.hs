@@ -19,7 +19,7 @@ p = many1 field `sepBy1` char '\n' <* eof
 f (Right ps) = count True . map isValid . filter ((==7) . M.size) . map (M.delete Cid . M.fromList) $ ps
 
 hgtp :: Parser (Int, String)
-hgtp = (,) <$> read <$> many1 digit <*> many1 anyChar
+hgtp = (,) . read <$> many1 digit <*> many1 anyChar
 
 isValid p =
   let

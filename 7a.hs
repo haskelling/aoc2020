@@ -28,9 +28,6 @@ bags = do
   b <- bag
   return (n, b)
 
-converge :: Eq a => (a -> a) -> a -> a
-converge f x = let x' = f x in if x' == x then x else converge f x'
-
 f bs = length (converge containedByAny [hash "shiny gold"]) - 1
   where
     containedByAny bs' = nub $ sort $ bs' ++ map fst (filter (matchAny bs') bs)

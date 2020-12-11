@@ -30,4 +30,4 @@ bags = do
   b <- bag
   return (n, b)
 
-f bs = summarize (map fst bs, (M.fromList bs M.!)) 0 (sum . (map (\(i, v) -> i * (v + 1)))) $ hash "shiny gold"
+f bs = summarize (map fst bs, (M.fromList bs M.!)) 0 (sum . map (\(i, v) -> i * (v + 1))) $ hash "shiny gold"

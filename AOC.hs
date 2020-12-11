@@ -54,6 +54,9 @@ v !| i = v V.! (i `rem` V.length v)
 ltov :: [a] -> Vector a
 ltov = V.fromList
 
+vtol :: Vector a -> [a]
+vtol = V.toList
+
 tr :: Ord a => [a] -> [a] -> [a] -> [a]
 tr xs ys = map ((M.fromList $ zip xs ys) M.!)
 
@@ -61,13 +64,16 @@ readBin :: String -> Int
 readBin = foldl' (\x y -> x * 2 + digitToInt y) 0
 
 summarize :: Ord n => ([n], n -> [(v, n)]) -> w -> ([(v, w)] -> w) -> n -> w
-summarize (nodes, getChildren) v0 f n = head $ catMaybes $ map (M.!? n) $ iterate getAll M.empty
+summarize (nodes, getChildren) v0 f n = head $ mapMaybe (M.!? n) $ iterate getAll M.empty
   where
     containedByAll xs = filter (matchesAll xs) nodes
     matchesAll ns n = null . (\\ ns) $ map snd $ getChildren n
 
     getAll m = foldl' add m $ containedByAll $ M.keys m
 
-    add m n = M.insertWith (flip const) n (calc m $ getChildren n) m
+    add m n = M.insertWith (\_ x -> x) n (calc m $ getChildren n) m
     calc _ [] = v0
     calc m xs = f $ map (fmap (m M.!)) xs
+
+converge :: Eq a => (a -> a) -> a -> a
+converge f x = let x' = f x in if x' == x then x else converge f x'
