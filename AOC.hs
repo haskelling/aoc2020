@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, TypeFamilies #-}
 
 module AOC(module Prelude, module AOC, module Text.Parsec, module Data.Vector, module Data.Char, module Data.List, module Data.List.Split, module Data.Hashable, module Data.Maybe, module Data.Either) where
 
@@ -77,3 +77,55 @@ summarize (nodes, getChildren) v0 f n = head $ mapMaybe (M.!? n) $ iterate getAl
 
 converge :: Eq a => (a -> a) -> a -> a
 converge f x = let x' = f x in if x' == x then x else converge f x'
+
+instance (Num a, Num b) => Num (a, b) where
+  (x, y) + (u, v) = (x + u, y + v)
+  (x, y) * (u, v) = (x * u, y * v)
+  negate (x, y) = (negate x, negate y)
+  fromInteger x = (fromInteger x, 0)
+  abs (x, y) = (abs x, abs y)
+  signum (x, y) = (signum x, signum y)
+
+(*$) :: Int -> (Int, Int) -> (Int, Int)
+n *$ (x, y) = (n * x, n * y)
+
+mapnbs :: [(Int, Int)] -> (a -> [a] -> b) -> Vector (Vector a) -> Vector (Vector b)
+mapnbs nbs f m = V.imap (\y v -> V.imap (\x i -> modify i (x, y)) v) m
+  where
+    modify i x = f i $ mapMaybe (get x) nbs
+    get (x0, y0) (x, y) = do
+      row <- m V.!? (y0 + y)
+      row V.!? (x0 + x)
+
+maplos :: [(Int, Int)] -> (a -> Bool) -> (a -> [a] -> b) -> Vector (Vector a) -> Vector (Vector b)
+maplos nbs isEmpty f m = V.imap (\y v -> V.imap (\x i -> modify i (x, y)) v) m
+  where
+    modify i x = f i $ mapMaybe (getFirst x) nbs
+    getFirst x0 x = do
+      v <- get x0 x
+      if isEmpty v then getFirst (x0 + x) x else return v
+    get (x0, y0) (x, y) = do
+      row <- m V.!? (y0 + y)
+      row V.!? (x0 + x)
+
+nbs4, nbs8 :: [(Int, Int)]
+nbs4 = [(0, 1), (-1, 0), (1, 0), (0, -1)]
+nbs8 = [(-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (-1, -1), (0, -1), (1, -1)]
+
+map8nbs = mapnbs nbs8
+map4nbs = mapnbs nbs4
+
+map8los = maplos nbs8
+map4los = maplos nbs4
+
+dir 'E' = ( 1,  0)
+dir 'N' = ( 0,  1)
+dir 'W' = (-1,  0)
+dir 'S' = ( 0, -1)
+
+rot (x, y) = (-y, x)
+
+rotn 0 = id
+rotn n = rot . rotn ((n - 1) `mod` 4)
+
+manhatten (x, y) = abs x + abs y
