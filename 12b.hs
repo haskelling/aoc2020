@@ -9,4 +9,4 @@ m s (x:xs) = m' s x (read xs :: Int)
     m' (x, v) 'R' n = m' (x, v) 'L' (-n)
     m' (x, v) v'  n = (x, v + (n *$ dir v'))
 
-f xs = manhatten $ fst $ foldl' m (0, (10, 1)) xs
+f xs = manhattan $ fst $ foldl' m (0, (10, 1)) xs

@@ -23,6 +23,8 @@ cabal.project.local~
 .ghc.environment.*
 .cookie
 [1-9][ab]
-[12]0-9][ab]
+[12][0-9][ab]
 *.input
 *.output
+doc/
+AOC.txt
