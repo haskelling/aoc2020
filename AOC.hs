@@ -119,6 +119,14 @@ enump = choice $ map sr [minBound :: b .. maxBound :: b]
     sr :: (Show b) => b -> Parser b
     sr x = try $ stringi (show x) >> return x
 
+-- | The 'integer function is a 'Parser' for unsigned 'Int's.
+--
+-- >>> parse integer "301"
+-- Right 301
+--
+integer :: Parser Int
+integer = read <$> many1 digit
+
 -- ** Reading
 
 -- |The 'readBin' function reads a binary number from a String.
