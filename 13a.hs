@@ -8,5 +8,5 @@ f [ts, bs] = getResult $ minimum $ map busTime bs'
     bs' = mapMaybe readBus $ splitOn "," bs
     readBus "x" = Nothing
     readBus s = Just $ read s
-    busTime x = (x - ts' `rem` x, x)
+    busTime x = (x - ts' `mod` x, x)
     getResult (t, b) = t * b
