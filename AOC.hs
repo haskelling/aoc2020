@@ -166,7 +166,7 @@ tr :: Ord a
    -> [a] -- ^ The "to" part of the mapping
    -> [a] -- ^ The original list
    -> [a] -- ^ The updated list after replacing "from" elements with their "to" counterparts
-tr xs ys = map (\x -> maybe x id $ (M.fromList $ zip xs ys) M.!? x)
+tr xs ys = map (\x -> fromMaybe x $ M.fromList (zip xs ys) M.!? x)
 
 -- * Vector functions
 
