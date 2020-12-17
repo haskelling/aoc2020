@@ -15,8 +15,8 @@ ticketp = map read . splitOn ","
 f [as, [_, t], _:ts] = product $ map fst $ filter (isPrefixOf "departure" . snd) $ zip ticket fieldNames
   where
     (attribs, ticket, tickets) = (map attribp as, ticketp t, map ticketp ts)
-    matchesNoRules = not . or . mapM snd attribs
-    tickets' = filter (not . any matchesNoRules) tickets
+    matchesAnyRule = or . mapM snd attribs
+    tickets' = filter (all matchesAnyRule) tickets
 
     attributes = map filterAttribs $ transpose tickets'
     filterAttribs xs = map fst $ filter (\(_, r) -> all r xs) attribs
