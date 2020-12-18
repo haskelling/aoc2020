@@ -19,8 +19,9 @@ functions.
 
 The code for this module along with the 2020 AoC solutions can be cloned from [GitHub](https://github.com/haskelling/aoc2020).
 -}
-module AOC(module Prelude, module AOC, module Text.Parsec, module Data.Vector, module Data.Char, module Data.List, module Data.List.Split, module Data.Hashable, module Data.Maybe, module Data.Either) where
+module AOC(module Prelude, module AOC, module Text.Parsec, module Data.Vector, module Data.Char, module Data.List, module Data.List.Split, module Data.Hashable, module Data.Maybe, module Data.Either, module Data.Bool) where
 
+import Data.Bool
 import Data.Char
 import Data.Maybe
 import Data.Either
@@ -187,6 +188,14 @@ ltov = V.fromList
 ltov2 :: [[a]] -> Vector (Vector a)
 ltov2 = ltov . map ltov
 
+-- | 3-d variant of 'ltov'.
+ltov3 :: [[[a]]] -> Vector (Vector (Vector a))
+ltov3 = ltov . map ltov2
+
+-- | 4-d variant of 'ltov'.
+ltov4 :: [[[[a]]]] -> Vector (Vector (Vector (Vector a)))
+ltov4 = ltov . map ltov3
+
 -- | The 'vtol' function is a convenience function for 'Vector.toList'.
 vtol :: Vector a -> [a]
 vtol = V.toList
@@ -194,6 +203,14 @@ vtol = V.toList
 -- | The 'vtol2' function converts a 'Vector' of 'Vector's into a list of lists.
 vtol2 :: Vector (Vector a) -> [[a]]
 vtol2 = map vtol . vtol
+
+-- | 3-d variant of 'vtol'.
+vtol3 :: Vector (Vector (Vector a)) -> [[[a]]]
+vtol3 = map vtol2 . vtol
+
+-- | 4-d variant of 'vtol'.
+vtol4 :: Vector (Vector (Vector (Vector a))) -> [[[[a]]]]
+vtol4 = map vtol3 . vtol
 
 -- * Algorithms
 
@@ -232,6 +249,13 @@ summarize (nodes, getChildren) v0 f n = head $ mapMaybe (M.!? n) $ iterate getAl
 converge :: Eq a => (a -> a) -> a -> a
 converge f x = let x' = f x in if x' == x then x else converge f x'
 
+-- |The 'applyN' function applies f n times.
+--
+-- >>> applyN 5 (+2) 3
+-- 13
+--
+applyN n f = foldr1 (.) $ replicate n f
+
 -- ** Grid Algorithms
 
 -- |The 'mapnbs' function maps a function over a 'Vector' of 'Vector's,
@@ -247,6 +271,34 @@ mapnbs nbs f m = imap (\y v -> imap (\x i -> modify i (x, y)) v) m
     modify i x = f i $ mapMaybe (get x) nbs
     get (x0, y0) (x, y) = do
       row <- m V.!? (y0 + y)
+      row V.!? (x0 + x)
+
+-- |The 'mapnbs3' function is the 3-d variant of 'mapnbs'.
+mapnbs3 :: [(Int, Int, Int)]          -- ^ The list of coordinate offsets
+       -> (a -> [a] -> b)             -- ^ The mapping function
+       -> Vector (Vector (Vector a))  -- ^ The original grid
+       -> Vector (Vector (Vector b))  -- ^ The updated grid
+mapnbs3 nbs f m = imap (\z p -> imap (\y v -> imap (\x i -> modify i (x, y, z)) v) p) m
+  where
+    modify i x = f i $ mapMaybe (get x) nbs
+    get (x0, y0, z0) (x, y, z) = do
+      plane <- m V.!? (z0 + z)
+      row <- plane V.!? (y0 + y)
+      row V.!? (x0 + x)
+
+-- |The 'mapnbs4' function is the 4-d variant of 'mapnbs'.
+mapnbs4 :: [(Int, Int, Int, Int)]              -- ^ The list of coordinate offsets
+       -> (a -> [a] -> b)                      -- ^ The mapping function
+       -> Vector (Vector (Vector (Vector a)))  -- ^ The original grid
+       -> Vector (Vector (Vector (Vector b)))  -- ^ The updated grid
+mapnbs4 nbs f m = imap (\w c -> imap (\z p -> imap (\y v ->
+                    imap (\x i -> modify i (x, y, z, w)) v) p) c) m
+  where
+    modify i x = f i $ mapMaybe (get x) nbs
+    get (x0, y0, z0, w0) (x, y, z, w) = do
+      cube <- m V.!? (w0 + w)
+      plane <- cube V.!? (z0 + z)
+      row <- plane V.!? (y0 + y)
       row V.!? (x0 + x)
 
 -- |The 'maplos' function maps a function over a 'Vector' of 'Vector's,
@@ -277,12 +329,24 @@ nbs4 = [(0, 1), (-1, 0), (1, 0), (0, -1)]
 -- |'nbs8' lists the offsets of the eight neighbours of a cell in a grid.
 nbs8 = [(-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (-1, -1), (0, -1), (1, -1)]
 
+nbs6, nbs26 :: [(Int, Int, Int)]
+-- |3-d equivalent of 'nbs4'
+nbs6 = [(0, 0, 1), (0, -1, 0), (0, 1, 0), (0, 0, -1), (1, 0, 0), (-1, 0, 0)]
+-- |3-d equivalent of 'nbs8'
+nbs26 = [(x, y, z) | x <- [-1..1], y <- [-1..1], z <- [-1..1], (x, y, z) /= (0, 0, 0)]
+
+nbs8_4, nbs80 :: [(Int, Int, Int, Int)]
+-- |3-d equivalent of 'nbs4'
+nbs8_4 = [(0, 0, 0, 1), (0, 0, -1, 0), (0, 0, 1, 0), (0, 0, 0, -1),
+          (0, 1, 0, 0), (0, -1, 0, 0), (1, 0, 0, 0), (-1, 0, 0, 0)]
+-- |3-d equivalent of 'nbs8'
+nbs80 = [(x, y, z, w) | x <- [-1..1], y <- [-1..1], z <- [-1..1], w <- [-1..1], (x, y, z, w) /= (0, 0, 0, 0)]
+
 -- |The 'map8nbs' function maps a function over a 'Vector' of 'Vector's,
 -- treating it as a grid of cells.
 -- The mapping function is provided the cell value, and a list of the cell
 -- values of its eight neighbours.
 --
--- >>> conwayRule x ns = let n = count True ns in n == 3 || x && n == 2
 -- >>> map8nbs conwayRule $ ltov2 $ replicate 5 $ replicate 5 True
 -- [[True,False,False,False,True],[False,False,False,False,False],[False,False,False,False,False],[False,False,False,False,False],[True,False,False,False,True]]
 --
@@ -292,11 +356,22 @@ map8nbs = mapnbs nbs8
 -- The mapping function is provided the cell value, and a list of the cell
 -- values of its four non-diagonal neighbours.
 --
--- >>> conwayRule x ns = let n = count True ns in n == 3 || x && n == 2
 -- >>> map4nbs conwayRule $ ltov2 $ replicate 5 $ replicate 5 True
 -- [[True,True,True,True,True],[True,False,False,False,True],[True,False,False,False,True],[True,False,False,False,True],[True,True,True,True,True]]
 --
 map4nbs = mapnbs nbs4
+
+-- |3-d variant of 'map4nbs'.
+map6nbs = mapnbs3 nbs6
+
+-- |3-d variant of 'map8nbs'.
+map26nbs = mapnbs3 nbs26
+
+-- |4-d variant of 'map4nbs'.
+map8nbs4 = mapnbs4 nbs8_4
+
+-- |4-d variant of 'map8nbs'.
+map80nbs = mapnbs4 nbs80
 
 -- |The 'map8los' function maps a function over a 'Vector' of 'Vector's,
 -- treating it as a grid of cells.
@@ -305,7 +380,6 @@ map4nbs = mapnbs nbs4
 -- that are in the line of sight of it in the four cardinal directions plus
 -- the four intercardinal directions.
 --
--- >>> conwayRule x ns = let n = count True ns in n == 3 || x && n == 2
 -- >>> map8los not conwayRule $ ltov2 $ replicate 5 $ replicate 5 True
 -- [[True,False,False,False,True],[False,False,False,False,False],[False,False,False,False,False],[False,False,False,False,False],[True,False,False,False,True]]
 --
@@ -317,11 +391,22 @@ map8los = maplos nbs8
 -- the mapping function is provided the cell value, and a list of cell values
 -- that are in the line of sight of it in the four cardinal directions.
 --
--- >>> conwayRule x ns = let n = count True ns in n == 3 || x && n == 2
 -- >>> map4los not conwayRule $ ltov2 $ replicate 5 $ replicate 5 True
 -- [[True,True,True,True,True],[True,False,False,False,True],[True,False,False,False,True],[True,False,False,False,True],[True,True,True,True,True]]
 --
 map4los = maplos nbs4
+
+-- |The 'conwayRule' function is an implementation of the rule followed by the
+-- cells in Conway's Game of Life.  It can be used with the 'map8nbs' function
+-- to model the original version of the game.
+--
+-- >>> conwayRule True [True, False, True, False, True, True, False, False]
+-- False
+--
+conwayRule :: Bool   -- ^ The cell's current state
+           -> [Bool] -- ^ The current states of the cell's neighbours
+           -> Bool   -- ^ The cell's next state
+conwayRule x ns = let n = count True ns in n == 3 || x && n == 2
 
 -- ** Coordinate calculations
 
