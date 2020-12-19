@@ -1,6 +1,5 @@
 import AOC
 import Control.Monad.ST
-import Control.Monad
 import qualified Data.Vector.Unboxed.Mutable as V
 import qualified Data.IntMap as M
 

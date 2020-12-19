@@ -19,7 +19,7 @@ functions.
 
 The code for this module along with the 2020 AoC solutions can be cloned from [GitHub](https://github.com/haskelling/aoc2020).
 -}
-module AOC(module Prelude, module AOC, module Text.Parsec, module Data.Vector, module Data.Char, module Data.List, module Data.List.Split, module Data.Hashable, module Data.Maybe, module Data.Either, module Data.Bool) where
+module AOC(module Prelude, module AOC, module Text.Parsec, module Data.Vector, module Data.Char, module Data.List, module Data.List.Split, module Data.Hashable, module Data.Maybe, module Data.Either, module Data.Bool, module Control.Monad, module Text.Parsec.Expr) where
 
 import Data.Bool
 import Data.Char
@@ -36,6 +36,8 @@ import qualified Data.Map as M
 import Data.List.Split hiding(oneOf, sepBy, endBy)
 import Data.Hashable(hash)
 import Control.Exception(ArithException(..))
+import Control.Monad
+import Text.Parsec.Expr
 
 -- * Enhanced interact functions
 

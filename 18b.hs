@@ -1,5 +1,4 @@
 import AOC
-import Text.Parsec.Expr
 
 expr = buildExpressionParser table term
 term = paren <|> integer
