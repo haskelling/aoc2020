@@ -256,6 +256,7 @@ converge f x = let x' = f x in if x' == x then x else converge f x'
 -- >>> applyN 5 (+2) 3
 -- 13
 --
+applyN 0 f = id
 applyN n f = foldr1 (.) $ replicate n f
 
 -- ** Grid Algorithms

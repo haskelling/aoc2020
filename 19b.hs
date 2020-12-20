@@ -23,8 +23,8 @@ mkParser m (See x) = mkParser m (m M.! x)
 f [rs, ss] = count True $ map check ss
   where
     m = M.fromList $ map rulep rs
-    p42 = mkParser m $ m M.! 42
-    p31 = mkParser m $ m M.! 31
+    p42 = mkParser m $ See 42
+    p31 = mkParser m $ See 31
     p = do
       r42 <- many1 $ try p42
       r31 <- many1 p31
