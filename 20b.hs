@@ -24,7 +24,7 @@ monster = map (map (=='#')) ["                  # ", "#    ##    ##    ###", " #
 monsterSig = mkSig monster
 
 mkSig :: [[Bool]] -> Int
-mkSig ss = foldl (\a x -> a * 2 + bool 0 1 x) 0 $ concatMap (take 20) $ take 3 ss
+mkSig ss = boolsToInt $ concatMap (take 20) $ take 3 ss
 
 findMonsters :: [[Bool]] -> Int
 findMonsters ss = maximum $ map (uncurry findMonsters' . dupe . snd) $ getorients ss
@@ -58,19 +58,17 @@ f s = count True (concat completeGrid) - findMonsters completeGrid * count True 
     -- corner tiles are tiles with 4 unique edges (2 edges * 2 orientations)
     cornerTiles = filter ((==4) . length) $ groupOn t2of3 $ sortOn t2of3 $ map (snd . head) uniqueEdges
 
-    tileMap = M.fromListWith (++) $ map (\(edge, (o, tnum, tile)) -> (edge, [(tnum, tile)])) tileIntMapping
+    tileMap = M.fromListWith (++) $ map (\(edge, (_, tnum, tile)) -> (edge, [(tnum, tile)])) tileIntMapping
 
-    ((_,stNum,_):_) = head cornerTiles
-
-    stOris = filter (\(Ori fl _, _, _) -> not fl) $ head cornerTiles
-    stOri = let [(o1, t1), (o2, t2)] = map (\(Ori _ n, _, t) -> (n, t)) stOris
-            in  if o2 == succ o1 `mod` 4 then t1 else t2
-    stTile = (stNum, stOri)
+    stTiles = filter (\(Ori fl _, _, _) -> not fl) $ head cornerTiles
+    stGrid = let [(o1, t1), (o2, t2)] = map (\(Ori _ n, _, t) -> (n, t)) stTiles
+             in  if o2 == succ o1 `mod` 4 then t1 else t2
+    stTile = (t2of3 $ head stTiles, stGrid)
 
     belowTiles (n, t) = case filter ((/=n) . fst) $ tileMap M.! boolsToInt (last t) of
                           [nexttile] -> (n, t):belowTiles nexttile
                           _          -> [(n, t)]
-    rightTiles (n, t) = map (orient (Ori True 1) . snd) $ belowTiles (n, orient (Ori True 1) t)
+    rightTiles (n, t) = map (transpose . snd) $ belowTiles (n, transpose t)
 
     mid = tail . init
     allTiles = map (map (mid . map mid) . rightTiles) $ belowTiles stTile
