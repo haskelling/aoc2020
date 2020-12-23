@@ -69,7 +69,7 @@ interact' f = Prelude.interact $ (++"\n") . show . f
 interactg :: Show a => ([[String]] -> a) -> IO ()
 interactg f = interact $ f. splitOn [""]
 
--- * Parsing and Reading
+-- * Parsing, Reading and Showing
 
 -- ** Parsing
 
@@ -141,6 +141,17 @@ integer = read <$> many1 digit
 --
 readBin :: String -> Int
 readBin = foldl' (\x y -> x * 2 + digitToInt y) 0 . takeWhile (`elem` "01")
+
+-- ** Showing
+
+-- |A newtype for String whose show implementation doesn't add quotes.
+--
+-- >>> Str "abc"
+-- abc
+--
+newtype Str = Str String deriving (Eq, Ord, Read)
+instance Show Str where
+  show (Str s) = s
 
 -- * List functions
 

@@ -1,4 +1,3 @@
-{-# LANGUAGE TupleSections #-}
 import AOC
 import qualified Data.Map as M
 

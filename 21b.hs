@@ -1,10 +1,9 @@
-{-# LANGUAGE TupleSections #-}
 import AOC
 import qualified Data.Map as M
 
 main = interact f
 
-f s = intercalate "," $ map (head . snd) remainingPossibilities
+f s = Str $ intercalate "," $ map (head . snd) remainingPossibilities
   where
     g [is, as] = (words is, splitOn ", " $ init as)
     mapping = map (g . splitOn " (contains ") s

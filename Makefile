@@ -1,5 +1,5 @@
 FLAGS = -fPIC -O2 -g
-HFLAGS = $(FLAGS) -threaded -rtsopts -v0 -XNoImplicitPrelude
+HFLAGS = $(FLAGS) -threaded -rtsopts -v0 -XNoImplicitPrelude -XTupleSections
 DONE1 = $(wildcard [1-9][ab].hs)
 DONE2 = $(wildcard [12][0-9][ab].hs)
 GHCCOMMAND = $(shell command -v ghc)

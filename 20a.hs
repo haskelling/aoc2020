@@ -1,4 +1,3 @@
-{-# LANGUAGE TupleSections #-}
 import AOC
 import Data.List.Extra
 
