@@ -11,5 +11,5 @@ f s = sum $ map (\a -> count a $ concatMap fst mapping) $ allIs \\ noAll
     allAs = nub $ concatMap snd mapping
     givenPossibilities = concatMap (\(is, as) -> map (,is) as) mapping
     asToIs = M.fromList $ map (,allIs) allAs
-    allPossibilities = foldl' (\m (a, is) -> M.update (\is' -> Just $ is' `intersect` is) a m) asToIs givenPossibilities
+    allPossibilities = foldl' (\m (a, is) -> M.update (Just . intersect is) a m) asToIs givenPossibilities
     noAll = nub $ concat $ M.elems allPossibilities

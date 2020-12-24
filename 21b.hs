@@ -11,7 +11,7 @@ f s = Str $ intercalate "," $ map (head . snd) remainingPossibilities
     allAs = nub $ concatMap snd mapping
     givenPossibilities = concatMap (\(is, as) -> map (,is) as) mapping
     asToIs = M.fromList $ map (,allIs) allAs
-    allPossibilities = foldl' (\m (a, is) -> M.update (\is' -> Just $ is' `intersect` is) a m) asToIs givenPossibilities
+    allPossibilities = foldl' (\m (a, is) -> M.update (Just . intersect is) a m) asToIs givenPossibilities
 
     removeKnowns m = let knowns = concat $ filter ((==1) . length) $ map snd m
                      in  map (\(x, ys) -> (x, if length ys /= 1 then ys \\ knowns else ys)) m
