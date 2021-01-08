@@ -18,7 +18,7 @@ orient (Ori True  n) = rotgridn n . reverse
 getorients g = [(o, orient o g) | o <- orients]
 
 boolsToInt :: [Bool] -> Int
-boolsToInt = foldl' (\x y -> x * 2 + bool 0 1 y) 0
+boolsToInt = fromJust . readBin
 
 monster = map (map (=='#')) ["                  # ", "#    ##    ##    ###", " #  #  #  #  #  #   "]
 monsterSig = mkSig monster

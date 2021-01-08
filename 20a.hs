@@ -15,7 +15,7 @@ orient (Ori True  n) = rotgridn n . reverse
 getorients g = [orient o g | o <- orients]
 
 boolsToInt :: [Bool] -> Int
-boolsToInt = foldl' (\x y -> x * 2 + bool 0 1 y) 0
+boolsToInt = fromJust . readBin
 
 g :: [String] -> (Int, [[Bool]])
 g (t:s) = (read $ init t', s')

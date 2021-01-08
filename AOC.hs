@@ -1,4 +1,6 @@
-{-# LANGUAGE ScopedTypeVariables, TypeFamilies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TypeFamilies               #-}
 {-# OPTIONS_HADDOCK prune, ignore-exports #-}
 {-|
 Module      : AOC
@@ -21,23 +23,35 @@ The code for this module along with the 2020 AoC solutions can be cloned from [G
 -}
 module AOC(module Prelude, module AOC, module Text.Parsec, module Data.Vector, module Data.Char, module Data.List, module Data.List.Split, module Data.Hashable, module Data.Maybe, module Data.Either, module Data.Bool, module Control.Monad, module Text.Parsec.Expr) where
 
-import Data.Bool
-import Data.Char
-import Data.Maybe
-import Data.Either
-import Prelude hiding(interact)
+import           Control.Arrow
+import           Control.Exception     (ArithException (..))
+import           Control.Monad
+import           Data.Bits
+import           Data.Bool
+import           Data.Char
+import           Data.Either
+import           Data.Hashable         (hash)
+import           Data.IntMap           (IntMap)
+import qualified Data.IntMap           as IM
+import           Data.List             hiding (nub)
+import           Data.List.Split       hiding (endBy, oneOf, sepBy)
+import qualified Data.Map              as M
+import           Data.Map.Merge.Strict
+import qualified Data.Map.Strict       as MS
+import           Data.Maybe
+import qualified Data.Set              as S
+import           Data.Tuple
+import           Data.Vector           (Vector, imap)
+import qualified Data.Vector           as V
+import           Data.Vector.Unboxed   (Unbox)
+import qualified Data.Vector.Unboxed   as U
+import           Numeric
+import           Prelude               hiding (interact)
 import qualified Prelude
-import Text.Parsec hiding(count, parse, uncons)
-import qualified Text.Parsec as Parsec
-import Data.Vector(Vector, imap)
-import qualified Data.Vector as V
-import Data.List
-import qualified Data.Map as M
-import Data.List.Split hiding(oneOf, sepBy, endBy)
-import Data.Hashable(hash)
-import Control.Exception(ArithException(..))
-import Control.Monad
-import Text.Parsec.Expr
+import           Text.Parsec           hiding (count, parse, uncons)
+import qualified Text.Parsec           as Parsec
+import           Text.Parsec.Expr
+
 
 -- * Enhanced interact functions
 
@@ -68,6 +82,7 @@ interact' f = Prelude.interact $ (++"\n") . show . f
 --
 interactg :: Show a => ([[String]] -> a) -> IO ()
 interactg f = interact $ f. splitOn [""]
+
 
 -- * Parsing, Reading and Showing
 
@@ -133,14 +148,38 @@ integer = read <$> many1 digit
 -- ** Reading
 
 -- |The 'readBin' function reads a binary number from a String.
--- Input is read until the first non-binary digit, after which the rest of the
--- String is silently dropped.
+-- Any non-binary digit encountered will result in a Nothing.
 --
 -- >>> readBin "01011010"
--- 90
+-- Just 90
 --
-readBin :: String -> Int
-readBin = foldl' (\x y -> x * 2 + digitToInt y) 0 . takeWhile (`elem` "01")
+readBin :: ReadBin a => [a] -> Maybe Int
+readBin = foldl' add (Just 0)
+  where
+    add x y = do
+      x' <- x
+      y' <- toBin y
+      return $ x' * 2 + y'
+
+class ReadBin a where
+  toBin :: a -> Maybe Int
+
+instance ReadBin Char where
+  toBin '0' = Just 0
+  toBin '1' = Just 1
+  toBin  _  = Nothing
+
+instance ReadBin Bool where
+  toBin False = Just 0
+  toBin True  = Just 1
+
+newtype Bin = Bin { unBin :: Int } deriving (Eq, Ord, Enum, Bounded, Num, Bits)
+
+instance Show Bin where
+  showsPrec _ (Bin i) = showIntAtBase 2 intToDigit i
+
+instance Read Bin where
+  readsPrec _ s = let (x, y) = span (`elem` "01") s in [(Bin $ fromJust $ readBin x, y)]
 
 -- ** Showing
 
@@ -152,6 +191,7 @@ readBin = foldl' (\x y -> x * 2 + digitToInt y) 0 . takeWhile (`elem` "01")
 newtype Str = Str String deriving (Eq, Ord, Read)
 instance Show Str where
   show (Str s) = s
+
 
 -- * List functions
 
@@ -182,6 +222,7 @@ tr :: Ord a
    -> [a] -- ^ The updated list after replacing "from" elements with their "to" counterparts
 tr xs ys = map (\x -> fromMaybe x $ M.fromList (zip xs ys) M.!? x)
 
+
 -- * Vector functions
 
 -- | The '!|' operator indexes into a 'Vector' modulo its length.  This will
@@ -201,11 +242,11 @@ ltov = V.fromList
 ltov2 :: [[a]] -> Vector (Vector a)
 ltov2 = ltov . map ltov
 
--- | 3-d variant of 'ltov'.
+-- | The 'ltov3' function converts a list of lists of lists into a 'Vector' of 'Vector's of 'Vector's.
 ltov3 :: [[[a]]] -> Vector (Vector (Vector a))
 ltov3 = ltov . map ltov2
 
--- | 4-d variant of 'ltov'.
+-- | The 'ltov4' function converts a list of lists of lists of lists into a 'Vector' of 'Vector's of 'Vector's of 'Vector's.
 ltov4 :: [[[[a]]]] -> Vector (Vector (Vector (Vector a)))
 ltov4 = ltov . map ltov3
 
@@ -217,13 +258,14 @@ vtol = V.toList
 vtol2 :: Vector (Vector a) -> [[a]]
 vtol2 = map vtol . vtol
 
--- | 3-d variant of 'vtol'.
+-- | The 'vtol2' function converts a 'Vector' of 'Vector's of 'Vector's into a list of lists of lists.
 vtol3 :: Vector (Vector (Vector a)) -> [[[a]]]
 vtol3 = map vtol2 . vtol
 
--- | 4-d variant of 'vtol'.
+-- | The 'vtol2' function converts a 'Vector' of 'Vector's of 'Vector's of 'Vector's into a list of lists of lists of lists.
 vtol4 :: Vector (Vector (Vector (Vector a))) -> [[[[a]]]]
 vtol4 = map vtol3 . vtol
+
 
 -- * Algorithms
 
@@ -232,30 +274,50 @@ vtol4 = map vtol3 . vtol
 -- |The 'summarize' function does a bottom-up calculation on a directed
 -- acyclic graph (DAG) by running a summary function on each node.
 --
--- >>> summarize ([1..10], \x -> [(0, y) | y <- [2*x, 3*x..10]]) 1 (sum . map snd) 1
+-- >>> f [] = 1; f xs = sum $ map snd xs
+-- >>> summarize ([1..10], \x -> [(0, y) | y <- [2*x, 3*x..10]]) f 1
 -- 13
 --
--- >>> summarize ([1..10], \x -> [(y, y) | y <- [2*x, 3*x..10]]) 1 (sum . map (\(w, s) -> w * s)) 1
+-- >>> f [] = 1; f xs = sum $ map (\(w, s) -> w * s) xs
+-- >>> summarize ([1..10], \x -> [(y, y) | y <- [2*x, 3*x..10]]) f 1
 -- 279
 --
 summarize :: Ord n
           => ([n], n -> [(v, n)]) -- ^ The list of nodes and function from node to list of children, given as a tuple of edge "weight" and child node
-          -> w                    -- ^ Summary value for childless nodes
           -> ([(v, w)] -> w)      -- ^ Summary function to populate the summary value for each node given a list of tuples representing the edge "weight" and summary value for each child node
           -> n                    -- ^ The node for which we need the summary
           -> w                    -- ^ The resulting summary value
-summarize (nodes, getChildren) v0 f n = head $ mapMaybe (M.!? n) $ iterate getAll M.empty
+summarize (nodes, children) f n = m M.! n
   where
-    containedByAll xs = filter (matchesAll xs) nodes
-    matchesAll ns n = null . (\\ ns) $ map snd $ getChildren n
+    m = M.fromSet (f . map2 (m M.!) . children) $ S.fromList nodes
 
-    getAll m = foldl' add m $ containedByAll $ M.keys m
+-- ** Maths Functions
 
-    add m n = M.insertWith (\_ x -> x) n (calc m $ getChildren n) m
-    calc _ [] = v0
-    calc m xs = f $ map (fmap (m M.!)) xs
+discreteLog :: Int -> Int -> Int -> Int
+discreteLog n x m = p - (xs IM.! k)
+  where
+    s = ceiling (sqrt (fromIntegral m) :: Double)
+    xs = IM.fromList [(((x `mod` m) * expMod n r m) `mod` m, r) | r <- [0 .. s]]
+    ys = IM.fromList [(expMod n ((s -1) * r) m, (s -1) * r) | r <- [1 .. s]]
+    (k, p) = head $ IM.toList $ IM.filterWithKey (\k_ _ -> IM.member k_ xs) ys
 
--- ** General-purpose Algorithms
+expMod :: Int -> Int -> Int -> Int
+expMod 0 _ _ = 0
+expMod _ 0 _ = 1
+expMod x e m
+  | even e = let p = expMod x (e `div` 2) m in mo $! p * p
+  | otherwise = mo $! x * expMod x (e - 1) m
+  where mo = flip mod m
+
+-- ** General-Purpose Functions
+
+-- | Replaces the 'nub' function from Data.List with a faster version that also sorts the list.
+nub :: Ord a => [a] -> [a]
+nub = map head . group . sort
+
+-- | The 'map2' function is simply 'fmap' '.' 'fmap'.
+map2 :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
+map2 = fmap . fmap
 
 -- |The 'converge' function repeatedly applies f until there's no change
 -- in the output.  That is, it calculates \( f (f (f ... (f x))) \).
@@ -267,53 +329,184 @@ converge f x = let x' = f x in if x' == x then x else converge f x'
 -- >>> applyN 5 (+2) 3
 -- 13
 --
-applyN 0 f = id
-applyN n f = foldr1 (.) $ replicate n f
+applyN n = foldr (.) id . replicate n
 
 -- ** Grid Algorithms
 
--- |The 'mapnbs' function maps a function over a 'Vector' of 'Vector's,
--- treating it as a grid of cells.
--- Given a list of coordinate offsets, the mapping function is provided the
--- cell value, and a list of the values of the cells at those offsets.
-mapnbs :: [(Int, Int)]      -- ^ The list of coordinate offsets
-       -> (a -> [a] -> b)   -- ^ The mapping function
-       -> Vector (Vector a) -- ^ The original grid
-       -> Vector (Vector b) -- ^ The updated grid
-mapnbs nbs f m = imap (\y v -> imap (\x i -> modify i (x, y)) v) m
+type GridUV2 a = (Int, U.Vector a)
+
+ltouv2 :: Unbox a => [[a]] -> GridUV2 a
+ltouv2 = length . head &&& U.fromList . concat
+
+uvtol2 :: Unbox a => GridUV2 a -> [[a]]
+uvtol2 (w, v) = chunksOf w $ U.toList v
+
+mapnbsuv :: (Unbox a, Unbox b)
+         => [(Int, Int)]     -- ^ The list of coordinate offsets
+         -> (a -> [a] -> b)  -- ^ The mapping function
+         -> GridUV2 a        -- ^ The original grid
+         -> GridUV2 b        -- ^ The updated grid
+mapnbsuv nbs f (w, v) = (w, U.fromList $ modify 0 0 $ U.toList v)
+  where
+    modify _ _ [] = []
+    modify i j xs | i == w = modify 0 (j + 1) xs
+    modify i j (x:xs) = f x (mapMaybe (get (i, j)) nbs):modify (i + 1) j xs
+    get z0 z = if x' < 0 || x' >= w || y' < 0 then Nothing else v U.!? (y' * w + x')
+      where
+        (x', y') = z0 + z
+
+type Grid2 a = MS.Map (Int, Int) a
+
+ltog2 :: [[a]] -> Grid2 a
+ltog2 = MS.fromList . concat . zipWith (\j -> zipWith (\i x -> ((i, j), x)) [0..]) [0..]
+
+gtol2 :: a -> Grid2 a -> [[a]]
+gtol2 d m = [[fromMaybe d (m MS.!? (x, y)) | x <- [xmin .. xmax]] | y <- [ymin .. ymax]]
+  where
+    ks = MS.keys m
+    xmin = minimum $ map fst ks
+    xmax = maximum $ map fst ks
+    ymin = minimum $ map snd ks
+    ymax = maximum $ map snd ks
+
+type Grid3 a = MS.Map (Int, Int, Int) a
+
+ltog3 :: [[[a]]] -> Grid3 a
+ltog3 = MS.fromList . concat . zipWith (\k -> concat . zipWith (\j -> zipWith (\i x -> ((i, j, k), x)) [0..]) [0..]) [0..]
+
+t1 (x, _, _) = x
+t2 (_, x, _) = x
+t3 (_, _, x) = x
+
+gtol3 :: a -> Grid3 a -> [[[a]]]
+gtol3 d m = [[[fromMaybe d (m MS.!? (x, y, z)) | x <- [xmin .. xmax]] | y <- [ymin .. ymax]] | z <- [zmin .. zmax]]
+  where
+    ks = MS.keys m
+    xmin = minimum $ map t1 ks
+    xmax = maximum $ map t1 ks
+    ymin = minimum $ map t2 ks
+    ymax = maximum $ map t2 ks
+    zmin = minimum $ map t3 ks
+    zmax = maximum $ map t3 ks
+
+type Grid4 a = MS.Map (Int, Int, Int, Int) a
+
+ltog4 :: [[[[a]]]] -> Grid4 a
+ltog4 = MS.fromList . concat . zipWith (\l -> concat . zipWith (\k -> concat . zipWith (\j -> zipWith (\i x -> ((i, j, k, l), x)) [0..]) [0..]) [0..]) [0..]
+
+s1 (x, _, _, _) = x
+s2 (_, x, _, _) = x
+s3 (_, _, x, _) = x
+s4 (_, _, _, x) = x
+
+gtol4 :: a -> Grid4 a -> [[[[a]]]]
+gtol4 d m = [[[[fromMaybe d (m MS.!? (w, x, y, z)) | w <- [wmin .. wmax]] | x <- [xmin .. xmax]] | y <- [ymin .. ymax]] | z <- [zmin .. zmax]]
+  where
+    ks = MS.keys m
+    wmin = minimum $ map s1 ks
+    wmax = maximum $ map s1 ks
+    xmin = minimum $ map s2 ks
+    xmax = maximum $ map s2 ks
+    ymin = minimum $ map s3 ks
+    ymax = maximum $ map s3 ks
+    zmin = minimum $ map s4 ks
+    zmax = maximum $ map s4 ks
+
+mapnbsg :: (Eq a, Num ix, Ord ix)
+        => [ix]             -- ^ The list of coordinate offsets
+        -> (a -> [a] -> a)  -- ^ The mapping function
+        -> a                -- ^ The value of an empty cell
+        -> MS.Map ix a      -- ^ The original grid
+        -> MS.Map ix a      -- ^ The updated grid
+mapnbsg nbs f d m = merge (mapMaybeMissing     $ \_ x -> f' x [])
+                          (mapMaybeMissing     $ const $ f' d)
+                          (zipWithMaybeMatched $ const f')
+                          m m'
+  where
+    m' = M.fromListWith (++) [(x + n, [v]) | (x, v) <- M.toList m, n <- nbs]
+    f' x xs = let x' = f x xs in if x' == d then Nothing else Just x'
+
+mapnbsv :: [(Int, Int)]       -- ^ The list of coordinate offsets
+        -> (a -> [a] -> b)    -- ^ The mapping function
+        -> Vector (Vector a)  -- ^ The original grid
+        -> Vector (Vector b)  -- ^ The updated grid
+mapnbsv nbs f m = imap (\y v -> imap (\x i -> modify i (x, y)) v) m
   where
     modify i x = f i $ mapMaybe (get x) nbs
     get (x0, y0) (x, y) = do
       row <- m V.!? (y0 + y)
       row V.!? (x0 + x)
 
+-- |The 'mapnbs' function maps a function over a 'List' of 'List's,
+-- treating it as a grid of cells.
+-- Given a list of coordinate offsets, the mapping function is provided the
+-- cell value, and a list of the values of the cells at those offsets.
+--
+-- >>> mapnbs nbs8 conwayRule False $ replicate 5 $ replicate 5 True
+-- [[False,False,True,True,True,False,False],[False,True,False,False,False,True,False],[True,False,False,False,False,False,True],[True,False,False,False,False,False,True],[True,False,False,False,False,False,True],[False,True,False,False,False,True,False],[False,False,True,True,True,False,False]]
+--
+-- >>> mapnbs nbs4 conwayRule False $ replicate 5 $ replicate 5 True
+-- [[True,True,True,True,True],[True,False,False,False,True],[True,False,False,False,True],[True,False,False,False,True],[True,True,True,True,True]]
+--
+mapnbs :: Eq a
+       => [(Int, Int)]    -- ^ The list of coordinate offsets
+       -> (a -> [a] -> a) -- ^ The mapping function
+       -> a               -- ^ The value of an empty cell
+       -> [[a]]           -- ^ The original grid
+       -> [[a]]           -- ^ The updated grid
+mapnbs nbs f d = gtol2 d . mapnbsg nbs f d . ltog2
+
+mapnbsC :: (Unbox a, Eq a)
+        => [(Int, Int)]    -- ^ The list of coordinate offsets
+        -> (a -> [a] -> a) -- ^ The mapping function
+        -> [[a]]           -- ^ The original grid
+        -> [[a]]           -- ^ The updated grid
+mapnbsC nbs f = uvtol2 . converge (mapnbsuv nbs f) . ltouv2
+
+mapnbsN :: Eq a
+        => Int             -- ^ The number of iterations
+        -> [(Int, Int)]    -- ^ The list of coordinate offsets
+        -> (a -> [a] -> a) -- ^ The mapping function
+        -> a               -- ^ The value of an empty cell
+        -> [[a]]           -- ^ The original grid
+        -> [[a]]           -- ^ The updated grid
+mapnbsN n nbs f d = gtol2 d . applyN n (mapnbsg nbs f d) . ltog2
+
 -- |The 'mapnbs3' function is the 3-d variant of 'mapnbs'.
-mapnbs3 :: [(Int, Int, Int)]          -- ^ The list of coordinate offsets
-       -> (a -> [a] -> b)             -- ^ The mapping function
-       -> Vector (Vector (Vector a))  -- ^ The original grid
-       -> Vector (Vector (Vector b))  -- ^ The updated grid
-mapnbs3 nbs f m = imap (\z p -> imap (\y v -> imap (\x i -> modify i (x, y, z)) v) p) m
-  where
-    modify i x = f i $ mapMaybe (get x) nbs
-    get (x0, y0, z0) (x, y, z) = do
-      plane <- m V.!? (z0 + z)
-      row <- plane V.!? (y0 + y)
-      row V.!? (x0 + x)
+mapnbs3 :: Eq a
+        => [(Int, Int, Int)]  -- ^ The list of coordinate offsets
+        -> (a -> [a] -> a)    -- ^ The mapping function
+        -> a                  -- ^ The value of an empty cell
+        -> [[[a]]]            -- ^ The original grid
+        -> [[[a]]]            -- ^ The updated grid
+mapnbs3 nbs f d = gtol3 d . mapnbsg nbs f d . ltog3
+
+mapnbs3N :: Eq a
+         => Int                -- ^ The number of iterations
+         -> [(Int, Int, Int)]  -- ^ The list of coordinate offsets
+         -> (a -> [a] -> a)    -- ^ The mapping function
+         -> a                  -- ^ The value of an empty cell
+         -> [[[a]]]            -- ^ The original grid
+         -> [[[a]]]            -- ^ The updated grid
+mapnbs3N n nbs f d = gtol3 d . applyN n (mapnbsg nbs f d) . ltog3
 
 -- |The 'mapnbs4' function is the 4-d variant of 'mapnbs'.
-mapnbs4 :: [(Int, Int, Int, Int)]              -- ^ The list of coordinate offsets
-       -> (a -> [a] -> b)                      -- ^ The mapping function
-       -> Vector (Vector (Vector (Vector a)))  -- ^ The original grid
-       -> Vector (Vector (Vector (Vector b)))  -- ^ The updated grid
-mapnbs4 nbs f m = imap (\w c -> imap (\z p -> imap (\y v ->
-                    imap (\x i -> modify i (x, y, z, w)) v) p) c) m
-  where
-    modify i x = f i $ mapMaybe (get x) nbs
-    get (x0, y0, z0, w0) (x, y, z, w) = do
-      cube <- m V.!? (w0 + w)
-      plane <- cube V.!? (z0 + z)
-      row <- plane V.!? (y0 + y)
-      row V.!? (x0 + x)
+mapnbs4 :: Eq a
+        => [(Int, Int, Int, Int)]  -- ^ The list of coordinate offsets
+        -> (a -> [a] -> a)         -- ^ The mapping function
+        -> a                       -- ^ The value of an empty cell
+        -> [[[[a]]]]               -- ^ The original grid
+        -> [[[[a]]]]               -- ^ The updated grid
+mapnbs4 nbs f d = gtol4 d . mapnbsg nbs f d . ltog4
+
+mapnbs4N :: Eq a
+         => Int                     -- ^ The number of iterations
+         -> [(Int, Int, Int, Int)]  -- ^ The list of coordinate offsets
+         -> (a -> [a] -> a)         -- ^ The mapping function
+         -> a                       -- ^ The value of an empty cell
+         -> [[[[a]]]]               -- ^ The original grid
+         -> [[[[a]]]]               -- ^ The updated grid
+mapnbs4N n nbs f d = gtol4 d . applyN n (mapnbsg nbs f d) . ltog4
 
 -- |The 'maplos' function maps a function over a 'Vector' of 'Vector's,
 -- treating it as a grid of cells.
@@ -321,6 +514,13 @@ mapnbs4 nbs f m = imap (\w c -> imap (\z p -> imap (\y v ->
 -- considered an empty cell.  The mapping function is provided the cell value,
 -- and a list of cell values that are in the line of sight, in the direction of
 -- the given coordinates.
+--
+-- >>> maplos nbs8 not conwayRule $ ltov2 $ replicate 5 $ replicate 5 True
+-- [[True,False,False,False,True],[False,False,False,False,False],[False,False,False,False,False],[False,False,False,False,False],[True,False,False,False,True]]
+--
+-- >>> maplos nbs4 not conwayRule $ ltov2 $ replicate 5 $ replicate 5 True
+-- [[True,True,True,True,True],[True,False,False,False,True],[True,False,False,False,True],[True,False,False,False,True],[True,True,True,True,True]]
+--
 maplos :: [(Int, Int)]      -- ^ The list of coordinates indicating the line-of-sight directions
        -> (a -> Bool)       -- ^ The isEmpty predicate - line of sight continues through cells whose value returns 'True'
        -> (a -> [a] -> b)   -- ^ The mapping function, given the cell value and the values of all cells found through a line-of-sight search
@@ -335,6 +535,14 @@ maplos nbs isEmpty f m = imap (\y v -> imap (\x i -> modify i (x, y)) v) m
     get (x0, y0) (x, y) = do
       row <- m V.!? (y0 + y)
       row V.!? (x0 + x)
+
+maplosC :: Eq a
+        => [(Int, Int)]    -- ^ The list of coordinates indicating the line-of-sight directions
+        -> (a -> Bool)     -- ^ The isEmpty predicate - line of sight continues through cells whose value returns 'True'
+        -> (a -> [a] -> a) -- ^ The mapping function, given the cell value and the values of all cells found through a line-of-sight search
+        -> [[a]]           -- ^ The original grid
+        -> [[a]]           -- ^ The updated grid
+maplosC nbs p f m = vtol2 $ converge (maplos nbs p f) $ ltov2 m
 
 nbs4, nbs8 :: [(Int, Int)]
 -- |'nbs4' lists the offsets of the four non-diagonal neighbours of a cell
@@ -355,60 +563,6 @@ nbs8_4 = [(0, 0, 0, 1), (0, 0, -1, 0), (0, 0, 1, 0), (0, 0, 0, -1),
           (0, 1, 0, 0), (0, -1, 0, 0), (1, 0, 0, 0), (-1, 0, 0, 0)]
 -- |3-d equivalent of 'nbs8'
 nbs80 = [(x, y, z, w) | x <- [-1..1], y <- [-1..1], z <- [-1..1], w <- [-1..1], (x, y, z, w) /= (0, 0, 0, 0)]
-
--- |The 'map8nbs' function maps a function over a 'Vector' of 'Vector's,
--- treating it as a grid of cells.
--- The mapping function is provided the cell value, and a list of the cell
--- values of its eight neighbours.
---
--- >>> map8nbs conwayRule $ ltov2 $ replicate 5 $ replicate 5 True
--- [[True,False,False,False,True],[False,False,False,False,False],[False,False,False,False,False],[False,False,False,False,False],[True,False,False,False,True]]
---
-map8nbs = mapnbs nbs8
--- |The 'map4nbs' function maps a function over a 'Vector' of 'Vector's,
--- treating it as a grid of cells.
--- The mapping function is provided the cell value, and a list of the cell
--- values of its four non-diagonal neighbours.
---
--- >>> map4nbs conwayRule $ ltov2 $ replicate 5 $ replicate 5 True
--- [[True,True,True,True,True],[True,False,False,False,True],[True,False,False,False,True],[True,False,False,False,True],[True,True,True,True,True]]
---
-map4nbs = mapnbs nbs4
-
--- |3-d variant of 'map4nbs'.
-map6nbs = mapnbs3 nbs6
-
--- |3-d variant of 'map8nbs'.
-map26nbs = mapnbs3 nbs26
-
--- |4-d variant of 'map4nbs'.
-map8nbs4 = mapnbs4 nbs8_4
-
--- |4-d variant of 'map8nbs'.
-map80nbs = mapnbs4 nbs80
-
--- |The 'map8los' function maps a function over a 'Vector' of 'Vector's,
--- treating it as a grid of cells.
--- A supplied predicate tells 'map8los' what is considered an empty cell, and
--- the mapping function is provided the cell value, and a list of cell values
--- that are in the line of sight of it in the four cardinal directions plus
--- the four intercardinal directions.
---
--- >>> map8los not conwayRule $ ltov2 $ replicate 5 $ replicate 5 True
--- [[True,False,False,False,True],[False,False,False,False,False],[False,False,False,False,False],[False,False,False,False,False],[True,False,False,False,True]]
---
-map8los = maplos nbs8
-
--- |The 'map4los' function maps a function over a 'Vector' of 'Vector's,
--- treating it as a grid of cells.
--- A supplied predicate tells 'map8los' what is considered an empty cell, and
--- the mapping function is provided the cell value, and a list of cell values
--- that are in the line of sight of it in the four cardinal directions.
---
--- >>> map4los not conwayRule $ ltov2 $ replicate 5 $ replicate 5 True
--- [[True,True,True,True,True],[True,False,False,False,True],[True,False,False,False,True],[True,False,False,False,True],[True,True,True,True,True]]
---
-map4los = maplos nbs4
 
 -- |The 'conwayRule' function is an implementation of the rule followed by the
 -- cells in Conway's Game of Life.  It can be used with the 'map8nbs' function
@@ -478,3 +632,25 @@ rotn n = rot . rotn ((n - 1) `mod` 4)
 -- 7
 --
 manhattan (x, y) = abs x + abs y
+
+-- *** 3-D space
+
+-- |'Num' instance for 3-tuples
+instance (Num a, Num b, Num c) => Num (a, b, c) where
+  (x, y, z) + (u, v, w) = (x + u, y + v, z + w)
+  (x, y, z) * (u, v, w) = (x * u, y * v, z * w)
+  negate (x, y, z) = (negate x, negate y, negate z)
+  fromInteger x = (fromInteger x, 0, 0)
+  abs (x, y, z) = (abs x, abs y, abs z)
+  signum (x, y, z) = (signum x, signum y, signum z)
+
+-- *** 4-D space
+
+-- |'Num' instance for 4-tuples
+instance (Num a, Num b, Num c, Num d) => Num (a, b, c, d) where
+  (w, x, y, z) + (h, i, j, k) = (w + h, x + i, y + j, z + k)
+  (w, x, y, z) * (h, i, j, k) = (w * h, x * i, y * j, z * k)
+  negate (w, x, y, z) = (negate w, negate x, negate y, negate z)
+  fromInteger x = (fromInteger x, 0, 0, 0)
+  abs (w, x, y, z) = (abs w, abs x, abs y, abs z)
+  signum (w, x, y, z) = (signum w, signum x, signum y, signum z)

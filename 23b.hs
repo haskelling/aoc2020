@@ -11,6 +11,7 @@ n = 1000000
 dec 0 = n - 1
 dec x = x - 1
 
+h :: V.MVector s Int -> Int -> ST s Int
 h v current = do
   x1 <- V.read v current
   x2 <- V.read v x1
@@ -22,16 +23,19 @@ h v current = do
   V.write v x x1
   V.write v current next
   return next
+{-# INLINE h #-}
 
 f' xs = runST $ do
   v <- V.new n
-  zipWithM_ (V.write v) xs' (tail $ cycle xs')
-  foldM_ (const . h v) (head xs') [1..nIters]
+  zipWithM_ (V.write v) xs' (tail xs' ++ [length xs'])
+  forM_ [length xs .. n - 2] (\i -> V.write v i (i + 1))
+  V.write v (n - 1) (head xs')
+  foldM_ (const . h v) (head xs') $ replicate nIters undefined
   r1 <- V.read v 0
   r2 <- V.read v r1
   return $ (r1+1) * (r2+1)
   where
-    xs' = map (+ (-1)) xs ++ [length xs .. n - 1]
+    xs' = map (+ (-1)) xs
 
 g (current, m) = g' $ dec' $ dec current
   where

@@ -30,5 +30,5 @@ bags = do
 
 f bs = length (converge containedByAny [hash "shiny gold"]) - 1
   where
-    containedByAny bs' = nub $ sort $ bs' ++ map fst (filter (matchAny bs') bs)
+    containedByAny bs' = nub $ bs' ++ map fst (filter (matchAny bs') bs)
     matchAny xs (_, ys) = not $ null [undefined | x <- xs, (_, y) <- ys, x == y]

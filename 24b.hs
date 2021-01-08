@@ -18,11 +18,11 @@ rule x ns = let n = count True ns in n == 2 || x && n == 1
 
 coordsToMap margin zs = [[(x, y) `elem` zs | x <- [minx..maxx]] | y <- [miny..maxy]]
   where
-    (minx, miny) = minimum zs - (margin, margin)
-    (maxx, maxy) = maximum zs + (margin, margin)
+    (minx, miny) = (minimum $ map fst zs, minimum $ map snd zs) - (margin, margin)
+    (maxx, maxy) = (maximum $ map fst zs, maximum $ map snd zs) + (margin, margin)
 
 nIters = 100
 
-f xs = sum $ map (count True) $ vtol2 $ applyN nIters (mapnbs nbs rule) $ ltov2 m
+f xs = count True $ concat $ mapnbsN nIters nbs rule False m
   where
-    m = coordsToMap nIters $ map head $ filter (odd . length) $ group $ sort $ map (foldl' godir 0) xs
+    m = coordsToMap 0 $ map head $ filter (odd . length) $ group $ sort $ map (foldl' godir 0) xs
