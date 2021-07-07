@@ -1,5 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TupleSections              #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# OPTIONS_HADDOCK prune, ignore-exports #-}
 {-|
@@ -287,7 +288,7 @@ summarize :: Ord n
           -> ([(v, w)] -> w)      -- ^ Summary function to populate the summary value for each node given a list of tuples representing the edge "weight" and summary value for each child node
           -> n                    -- ^ The node for which we need the summary
           -> w                    -- ^ The resulting summary value
-summarize (nodes, children) f n = m M.! n
+summarize (nodes, children) f = (m M.!)
   where
     m = M.fromSet (f . map2 (m M.!) . children) $ S.fromList nodes
 
@@ -358,59 +359,33 @@ mapnbsuv nbs f (w, v) = (w, U.fromList $ modify 0 0 $ U.toList v)
 type Grid2 a = MS.Map (Int, Int) a
 
 ltog2 :: [[a]] -> Grid2 a
-ltog2 = MS.fromList . concat . zipWith (\j -> zipWith (\i x -> ((i, j), x)) [0..]) [0..]
+ltog2 = MS.fromList . concat . zipWith (\j -> zipWith (\i -> ((i, j),)) [0..]) [0..]
 
 gtol2 :: a -> Grid2 a -> [[a]]
-gtol2 d m = [[fromMaybe d (m MS.!? (x, y)) | x <- [xmin .. xmax]] | y <- [ymin .. ymax]]
+gtol2 d m = [[fromMaybe d (m MS.!? (x, y)) | x <- [minimum xs .. maximum xs]] | y <- [minimum ys .. maximum ys]]
   where
-    ks = MS.keys m
-    xmin = minimum $ map fst ks
-    xmax = maximum $ map fst ks
-    ymin = minimum $ map snd ks
-    ymax = maximum $ map snd ks
+    (xs, ys) = unzip $ MS.keys m
 
 type Grid3 a = MS.Map (Int, Int, Int) a
 
 ltog3 :: [[[a]]] -> Grid3 a
-ltog3 = MS.fromList . concat . zipWith (\k -> concat . zipWith (\j -> zipWith (\i x -> ((i, j, k), x)) [0..]) [0..]) [0..]
-
-t1 (x, _, _) = x
-t2 (_, x, _) = x
-t3 (_, _, x) = x
+ltog3 = MS.fromList . concat . zipWith (\k -> concat . zipWith (\j -> zipWith (\i -> ((i, j, k),)) [0..]) [0..]) [0..]
 
 gtol3 :: a -> Grid3 a -> [[[a]]]
-gtol3 d m = [[[fromMaybe d (m MS.!? (x, y, z)) | x <- [xmin .. xmax]] | y <- [ymin .. ymax]] | z <- [zmin .. zmax]]
+gtol3 d m = [[[fromMaybe d (m MS.!? (x, y, z)) | x <- [minimum xs .. maximum xs]] | y <- [minimum ys .. maximum ys]] | z <- [minimum zs .. maximum zs]]
   where
-    ks = MS.keys m
-    xmin = minimum $ map t1 ks
-    xmax = maximum $ map t1 ks
-    ymin = minimum $ map t2 ks
-    ymax = maximum $ map t2 ks
-    zmin = minimum $ map t3 ks
-    zmax = maximum $ map t3 ks
+    (xs, ys, zs) = unzip3 $ MS.keys m
 
 type Grid4 a = MS.Map (Int, Int, Int, Int) a
 
 ltog4 :: [[[[a]]]] -> Grid4 a
-ltog4 = MS.fromList . concat . zipWith (\l -> concat . zipWith (\k -> concat . zipWith (\j -> zipWith (\i x -> ((i, j, k, l), x)) [0..]) [0..]) [0..]) [0..]
-
-s1 (x, _, _, _) = x
-s2 (_, x, _, _) = x
-s3 (_, _, x, _) = x
-s4 (_, _, _, x) = x
+ltog4 = MS.fromList . concat . zipWith (\l -> concat . zipWith (\k -> concat . zipWith (\j -> zipWith (\i -> ((i, j, k, l),)) [0..]) [0..]) [0..]) [0..]
 
 gtol4 :: a -> Grid4 a -> [[[[a]]]]
-gtol4 d m = [[[[fromMaybe d (m MS.!? (w, x, y, z)) | w <- [wmin .. wmax]] | x <- [xmin .. xmax]] | y <- [ymin .. ymax]] | z <- [zmin .. zmax]]
+gtol4 d m = [[[[fromMaybe d (m MS.!? (w, x, y, z)) | w <- [minimum ws .. maximum ws]] | x <- [minimum xs .. maximum xs]]
+                                                   | y <- [minimum ys .. maximum ys]] | z <- [minimum zs .. maximum zs]]
   where
-    ks = MS.keys m
-    wmin = minimum $ map s1 ks
-    wmax = maximum $ map s1 ks
-    xmin = minimum $ map s2 ks
-    xmax = maximum $ map s2 ks
-    ymin = minimum $ map s3 ks
-    ymax = maximum $ map s3 ks
-    zmin = minimum $ map s4 ks
-    zmax = maximum $ map s4 ks
+    (ws, xs, ys, zs) = unzip4 $ MS.keys m
 
 mapnbsg :: (Eq a, Num ix, Ord ix)
         => [ix]             -- ^ The list of coordinate offsets
@@ -469,8 +444,8 @@ mapnbsN :: Eq a
         -> (a -> [a] -> a) -- ^ The mapping function
         -> a               -- ^ The value of an empty cell
         -> [[a]]           -- ^ The original grid
-        -> [[a]]           -- ^ The updated grid
-mapnbsN n nbs f d = gtol2 d . applyN n (mapnbsg nbs f d) . ltog2
+        -> Grid2 a         -- ^ The updated grid
+mapnbsN n nbs f d = applyN n (mapnbsg nbs f d) . ltog2
 
 -- |The 'mapnbs3' function is the 3-d variant of 'mapnbs'.
 mapnbs3 :: Eq a
@@ -478,8 +453,8 @@ mapnbs3 :: Eq a
         -> (a -> [a] -> a)    -- ^ The mapping function
         -> a                  -- ^ The value of an empty cell
         -> [[[a]]]            -- ^ The original grid
-        -> [[[a]]]            -- ^ The updated grid
-mapnbs3 nbs f d = gtol3 d . mapnbsg nbs f d . ltog3
+        -> Grid3 a            -- ^ The updated grid
+mapnbs3 nbs f d = mapnbsg nbs f d . ltog3
 
 mapnbs3N :: Eq a
          => Int                -- ^ The number of iterations
@@ -487,8 +462,8 @@ mapnbs3N :: Eq a
          -> (a -> [a] -> a)    -- ^ The mapping function
          -> a                  -- ^ The value of an empty cell
          -> [[[a]]]            -- ^ The original grid
-         -> [[[a]]]            -- ^ The updated grid
-mapnbs3N n nbs f d = gtol3 d . applyN n (mapnbsg nbs f d) . ltog3
+         -> Grid3 a            -- ^ The updated grid
+mapnbs3N n nbs f d = applyN n (mapnbsg nbs f d) . ltog3
 
 -- |The 'mapnbs4' function is the 4-d variant of 'mapnbs'.
 mapnbs4 :: Eq a
@@ -496,8 +471,8 @@ mapnbs4 :: Eq a
         -> (a -> [a] -> a)         -- ^ The mapping function
         -> a                       -- ^ The value of an empty cell
         -> [[[[a]]]]               -- ^ The original grid
-        -> [[[[a]]]]               -- ^ The updated grid
-mapnbs4 nbs f d = gtol4 d . mapnbsg nbs f d . ltog4
+        -> Grid4 a                 -- ^ The updated grid
+mapnbs4 nbs f d = mapnbsg nbs f d . ltog4
 
 mapnbs4N :: Eq a
          => Int                     -- ^ The number of iterations
@@ -505,8 +480,10 @@ mapnbs4N :: Eq a
          -> (a -> [a] -> a)         -- ^ The mapping function
          -> a                       -- ^ The value of an empty cell
          -> [[[[a]]]]               -- ^ The original grid
-         -> [[[[a]]]]               -- ^ The updated grid
-mapnbs4N n nbs f d = gtol4 d . applyN n (mapnbsg nbs f d) . ltog4
+         -> Grid4 a                 -- ^ The updated grid
+mapnbs4N n nbs f d = applyN n (mapnbsg nbs f d) . ltog4
+
+elems = MS.elems
 
 -- |The 'maplos' function maps a function over a 'Vector' of 'Vector's,
 -- treating it as a grid of cells.
@@ -644,6 +621,10 @@ instance (Num a, Num b, Num c) => Num (a, b, c) where
   abs (x, y, z) = (abs x, abs y, abs z)
   signum (x, y, z) = (signum x, signum y, signum z)
 
+t1 (x, _, _) = x
+t2 (_, x, _) = x
+t3 (_, _, x) = x
+
 -- *** 4-D space
 
 -- |'Num' instance for 4-tuples
@@ -654,3 +635,8 @@ instance (Num a, Num b, Num c, Num d) => Num (a, b, c, d) where
   fromInteger x = (fromInteger x, 0, 0, 0)
   abs (w, x, y, z) = (abs w, abs x, abs y, abs z)
   signum (w, x, y, z) = (signum w, signum x, signum y, signum z)
+
+s1 (x, _, _, _) = x
+s2 (_, x, _, _) = x
+s3 (_, _, x, _) = x
+s4 (_, _, _, x) = x

@@ -44,10 +44,7 @@ g (t:s) = (read $ init t', s')
     (_:t':_) = words t
     s' = map (map (=='#')) s
 
-t2of3 (_,x,_) = x
-
 showMap = unlines . map (map (bool '.' '#'))
-
 
 f s = count True (concat completeGrid) - findMonsters completeGrid * count True (concat monster)
   where
@@ -56,14 +53,14 @@ f s = count True (concat completeGrid) - findMonsters completeGrid * count True 
     tileIntMapping = concatMap getInts tiles
     uniqueEdges = filter ((==1) . length) $ groupOn fst $ sort tileIntMapping
     -- corner tiles are tiles with 4 unique edges (2 edges * 2 orientations)
-    cornerTiles = filter ((==4) . length) $ groupOn t2of3 $ sortOn t2of3 $ map (snd . head) uniqueEdges
+    cornerTiles = filter ((==4) . length) $ groupOn t2 $ sortOn t2 $ map (snd . head) uniqueEdges
 
     tileMap = M.fromListWith (++) $ map (\(edge, (_, tnum, tile)) -> (edge, [(tnum, tile)])) tileIntMapping
 
     stTiles = filter (\(Ori fl _, _, _) -> not fl) $ head cornerTiles
     stGrid = let [(o1, t1), (o2, t2)] = map (\(Ori _ n, _, t) -> (n, t)) stTiles
              in  if o2 == succ o1 `mod` 4 then t1 else t2
-    stTile = (t2of3 $ head stTiles, stGrid)
+    stTile = (t2 $ head stTiles, stGrid)
 
     belowTiles (n, t) = case filter ((/=n) . fst) $ tileMap M.! boolsToInt (last t) of
                           [nexttile] -> (n, t):belowTiles nexttile

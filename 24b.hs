@@ -23,6 +23,6 @@ coordsToMap margin zs = [[(x, y) `elem` zs | x <- [minx..maxx]] | y <- [miny..ma
 
 nIters = 100
 
-f xs = count True $ concat $ mapnbsN nIters nbs rule False m
+f xs = count True $ elems $ mapnbsN nIters nbs rule False m
   where
     m = coordsToMap 0 $ map head $ filter (odd . length) $ group $ sort $ map (foldl' godir 0) xs
