@@ -11,6 +11,10 @@ HADDOCK_FLAGS = $(foreach file,$(HADDOCK_FILES),-i $(dir $(file)),$(file))
 all: $(sort $(DONE1:%.hs=%.output)) $(sort $(DONE2:%.hs=%.output)) | doc/AOC.html
 	@for output in $^; do /bin/echo -n "$${output/.output}: "; cat "$$output"; done
 
+installdeps:
+	cabal install --lib vector split hashable parsec mtl extra
+	cabal install --overwrite-policy=always doctest
+
 test:
 	@make > /dev/null
 	@make | grep -v 'ch:' > .output

@@ -6,7 +6,7 @@
 {-|
 Module      : AOC
 Description : A library of useful functions for solving coding problems
-Copyright   : (c) 2020 Haskell Coder
+Copyright   : (c) 2021 Haskell Coder
 License     : GPL-3
 Maintainer  : haskelling@pdr.cx
 Stability   : experimental
@@ -14,15 +14,15 @@ Portability : POSIX
 
 AOC is a library of useful functions for solving coding problems.
 
-It accompanies a [video series](https://www.youtube.com/playlist?list=PLDRIsR-OaZkzN7iV6Q6MRmEVYL_HRz7GS)
-describing how to solve the [2020 Advent of Code challenges](https://www.adventofcode.com/2020).
+It accompanies a [video series](https://www.youtube.com/playlist?list=PLDRIsR-OaZkzqqyss1B01G_7RWuXnUeb5)
+describing how to solve the [2021 Advent of Code challenges](https://www.adventofcode.com/2021).
 It is intended as a learning tool for beginner and intermediate Haskellers, so
 often goes into some depth describing Haskell concepts, tools, and library
 functions.
 
-The code for this module along with the 2020 AoC solutions can be cloned from [GitHub](https://github.com/haskelling/aoc2020).
+The code for this module along with the 2021 AoC solutions can be cloned from [GitHub](https://github.com/haskelling/aoc2021).
 -}
-module AOC(module Prelude, module AOC, module Text.Parsec, module Data.Vector, module Data.Char, module Data.List, module Data.List.Split, module Data.Hashable, module Data.Maybe, module Data.Either, module Data.Bool, module Control.Monad, module Text.Parsec.Expr) where
+module AOC(module Prelude, module AOC, module Text.Parsec, module Data.Vector, module Data.Char, module Data.List, module Data.List.Split, module Data.List.Extra, module Data.Hashable, module Data.Maybe, module Data.Either, module Data.Bool, module Control.Monad, module Text.Parsec.Expr, module Control.Arrow) where
 
 import           Control.Arrow
 import           Control.Exception     (ArithException (..))
@@ -36,6 +36,7 @@ import           Data.IntMap           (IntMap)
 import qualified Data.IntMap           as IM
 import           Data.List             hiding (nub)
 import           Data.List.Split       hiding (endBy, oneOf, sepBy)
+import           Data.List.Extra       hiding (splitOn, merge, chunksOf, linesBy, wordsBy, lower, upper, split, nub)
 import qualified Data.Map              as M
 import           Data.Map.Merge.Strict
 import qualified Data.Map.Strict       as MS
@@ -199,7 +200,7 @@ instance Show Str where
 -- | The 'count' function returns the number of occurrences of the given value
 -- in the given list.
 --
--- >>> count 'e' "Advent of Code 2020"
+-- >>> count 'e' "Advent of Code 2021"
 -- 2
 --
 -- >>> count 2 [3,2,1,0,4,2,3,4,2]
@@ -640,3 +641,12 @@ s1 (x, _, _, _) = x
 s2 (_, x, _, _) = x
 s3 (_, _, x, _) = x
 s4 (_, _, _, x) = x
+
+-- |'Num' instance for 'Maybe' 'Num's
+instance Num a => Num (Maybe a) where
+  x * y       = (*) <$> x <*> y
+  x + y       = (+) <$> x <*> y
+  abs         = (abs <$>)
+  signum      = (signum <$>)
+  fromInteger = (Just . fromInteger)
+  negate      = (negate <$>)
